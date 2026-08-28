@@ -121,4 +121,48 @@ public sealed class ElasticsearchProductSearchRepositoryTests
         Assert.Equal(2, result.Page);
         Assert.Equal(1, result.PageSize);
     }
+
+    [Fact]
+    public async Task SearchAsync_WhenElasticsearchReturnsError_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var client = new ElasticsearchClient(
+            new ElasticsearchClientSettings(
+                new Uri("http://localhost:9200")));
+
+        var elasticsearchOptions = Options.Create(
+            new ElasticsearchOptions
+            {
+                Url = "http://localhost:9200",
+                ProductIndex = "products-does-not-exist"
+            });
+
+        var searchOptions = Options.Create(
+            new ProductSearchOptions
+            {
+                NameBoost = 1,
+                DescriptionBoost = 1,
+                CategoryBoost = 1
+            });
+
+        var repository = new ElasticsearchProductSearchRepository(
+            client,
+            elasticsearchOptions,
+            searchOptions,
+            NullLogger<ElasticsearchProductSearchRepository>.Instance);
+
+        var request = new ProductSearchRequest
+        {
+            Query = "apple"
+        };
+
+        // Act
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => repository.SearchAsync(request));
+
+        // Assert
+        Assert.Equal(
+            "Elasticsearch product search failed.",
+            exception.Message);
+    }
 }
