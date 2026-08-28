@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Search.Application.Products;
 using Search.Application.Tests.Fakes;
 using Search.Domain;
@@ -12,7 +13,11 @@ public sealed class SearchProductsTests
         // Arrange
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
-        var searchProducts = new SearchProducts(repository, cache);
+
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
 
         // Act
         var result = await searchProducts.ExecuteAsync(
@@ -33,7 +38,11 @@ public sealed class SearchProductsTests
         // Arrange
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
-        var searchProducts = new SearchProducts(repository, cache);
+
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
 
         // Act
         await searchProducts.ExecuteAsync(
@@ -52,7 +61,10 @@ public sealed class SearchProductsTests
         // Arrange
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
-        var searchProducts = new SearchProducts(repository, cache);
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
 
         using var cts = new CancellationTokenSource();
 
@@ -108,7 +120,8 @@ public sealed class SearchProductsTests
 
         var searchProducts = new SearchProducts(
             repository,
-            cache);
+            cache,
+            NullLogger<SearchProducts>.Instance);
 
         // Act
         var result = await searchProducts.ExecuteAsync(request);
@@ -136,7 +149,8 @@ public sealed class SearchProductsTests
 
         var searchProducts = new SearchProducts(
             repository,
-            cache);
+            cache,
+            NullLogger<SearchProducts>.Instance);
 
         // Act
         var result = await searchProducts.ExecuteAsync(request);
