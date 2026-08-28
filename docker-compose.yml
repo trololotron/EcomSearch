@@ -1,0 +1,40 @@
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.0
+    container_name: ecomsearch-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.license.self_generated.type=trial
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  redis:
+    image: redis:7.4.11-alpine
+    container_name: ecomsearch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  mongo:
+    image: mongo:8.0
+    container_name: ecomsearch-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: ecomsearch-kafka
+    ports:
+      - "9092:9092"
+
+volumes:
+  elasticsearch-data:
+  redis-data:
+  mongo-data:

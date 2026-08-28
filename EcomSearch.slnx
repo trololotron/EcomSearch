@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Search.Api/Search.Api.csproj" />
+  <Project Path="Search.Application.Tests/Search.Application.Tests.csproj" />
+  <Project Path="Search.Application/Search.Application.csproj" />
+  <Project Path="Search.Domain/Search.Domain.csproj" />
+  <Project Path="Search.Infrastructure/Search.Infrastructure.csproj" />
+</Solution>
