@@ -1,5 +1,6 @@
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.QueryDsl;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Search.Application.Abstractions;
 using Search.Application.Products;
@@ -15,15 +16,18 @@ public sealed class ElasticsearchProductSearchRepository
     private readonly ElasticsearchClient _client;
     private readonly ElasticsearchOptions _elasticsearchOptions;
     private readonly ProductSearchOptions _searchOptions;
+    private readonly ILogger<ElasticsearchProductSearchRepository> _logger;
 
     public ElasticsearchProductSearchRepository(
         ElasticsearchClient client,
         IOptions<ElasticsearchOptions> elasticsearchOptions,
-        IOptions<ProductSearchOptions> searchOptions)
+        IOptions<ProductSearchOptions> searchOptions,
+        ILogger<ElasticsearchProductSearchRepository> logger)
     {
         _client = client;
         _elasticsearchOptions = elasticsearchOptions.Value;
         _searchOptions = searchOptions.Value;
+        _logger = logger;
     }
 
     public async Task<ProductSearchResult> SearchAsync(
@@ -31,6 +35,13 @@ public sealed class ElasticsearchProductSearchRepository
        CancellationToken cancellationToken = default)
     {
         var from = (request.Page - 1) * request.PageSize;
+
+        _logger.LogInformation(
+            "Starting product search. Query: {Query}, Page: {Page}, PageSize: {PageSize}, Sort: {Sort}",
+            request.Query,
+            request.Page,
+            request.PageSize,
+            request.Sort);
 
         var response = await _client.SearchAsync<Product>(
             s => s
@@ -41,6 +52,23 @@ public sealed class ElasticsearchProductSearchRepository
                     .Must(BuildSearchQuery(request))
                     .Filter(GetFilters(request)))),
             cancellationToken);
+
+        if (!response.IsValidResponse)
+        {
+            _logger.LogError(
+                "Elasticsearch product search failed. Query: {Query}, DebugInformation: {DebugInformation}",
+                request.Query,
+                response.DebugInformation);
+
+            throw new InvalidOperationException(
+                "Elasticsearch product search failed.");
+        }
+
+        _logger.LogInformation(
+                "Product search completed. Query: {Query}, Total: {Total}, Returned: {Returned}",
+                request.Query,
+                response.Total,
+                response.Documents.Count);
 
         return new ProductSearchResult
         {

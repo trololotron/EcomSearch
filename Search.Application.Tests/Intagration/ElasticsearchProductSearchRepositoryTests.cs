@@ -1,7 +1,7 @@
 ﻿using Elastic.Clients.Elasticsearch;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Search.Application.Products;
-using Search.Domain;
 using Search.Infrastructure.Configuration;
 using Search.Infrastructure.Search;
 
@@ -35,7 +35,8 @@ public sealed class ElasticsearchProductSearchRepositoryTests
         _repository = new ElasticsearchProductSearchRepository(
             client,
             elasticsearchOptions,
-            searchOptions);
+            searchOptions,
+            NullLogger<ElasticsearchProductSearchRepository>.Instance);
     }
 
     [Fact]
