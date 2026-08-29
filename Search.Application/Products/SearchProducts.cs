@@ -26,13 +26,31 @@ public sealed class SearchProducts
     {
         var cacheKey = ProductSearchCacheKey.Create(request);
 
-        var cachedResult = await _cache.GetAsync(
-            cacheKey,
-            cancellationToken);
+        ProductSearchResult? cachedResult = null;
+
+        try
+        {
+            cachedResult = await _cache.GetAsync(
+                cacheKey,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Cache GET failed for key {CacheKey}. Continuing without cache.",
+                cacheKey);
+        }
 
         if (cachedResult is not null)
         {
-            _logger.LogInformation("Cache HIT for key {CacheKey}", cacheKey);
+            _logger.LogInformation(
+                "Cache HIT for key {CacheKey}",
+                cacheKey);
 
             return cachedResult;
         }
@@ -43,10 +61,24 @@ public sealed class SearchProducts
             request,
             cancellationToken);
 
-        await _cache.SetAsync(
-            cacheKey,
-            result,
-            cancellationToken);
+        try
+        {
+            await _cache.SetAsync(
+                cacheKey,
+                result,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Cache SET failed for key {CacheKey}. Search result will still be returned.",
+                cacheKey);
+        }
 
         return result;
     }

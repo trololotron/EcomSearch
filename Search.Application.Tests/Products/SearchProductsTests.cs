@@ -176,4 +176,95 @@ public sealed class SearchProductsTests
             result.Items[0].Name,
             cachedValue.Items[0].Name);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCacheGetFails_SearchesRepository()
+    {
+        // Arrange
+        var repository = new FakeProductSearchRepository();
+
+        var cache = new FailingCache<ProductSearchResult>(
+            new InvalidOperationException("Redis is unavailable."),
+            failOnGet: true);
+
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
+
+        var request = new ProductSearchRequest
+        {
+            Query = "iphone"
+        };
+
+        // Act
+        var result = await searchProducts.ExecuteAsync(request);
+
+        // Assert
+        Assert.Single(result.Items);
+        Assert.Equal("iPhone 17 Pro", result.Items[0].Name);
+        Assert.Equal(1, repository.SearchCallCount);
+    }
+
+    [Fact]    public async Task ExecuteAsync_WhenCacheSetFails_ReturnsRepositoryResult()
+    {
+        // Arrange
+        var repository = new FakeProductSearchRepository();
+
+        var cache = new FailingCache<ProductSearchResult>(
+            new InvalidOperationException("Redis is unavailable."),
+            failOnSet: true);
+
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
+
+        var request = new ProductSearchRequest
+        {
+            Query = "iphone"
+        };
+
+        // Act
+        var result = await searchProducts.ExecuteAsync(request);
+
+        // Assert
+        Assert.Single(result.Items);
+        Assert.Equal("iPhone 17 Pro", result.Items[0].Name);
+        Assert.Equal(1, repository.SearchCallCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCacheGetIsCanceled_PropagatesCancellation()
+    {
+        // Arrange
+        var repository = new FakeProductSearchRepository();
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var cache = new FailingCache<ProductSearchResult>(
+            new OperationCanceledException(cts.Token),
+            failOnGet: true);
+
+        var searchProducts = new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance);
+
+        var request = new ProductSearchRequest
+        {
+            Query = "iphone"
+        };
+
+        // Act
+        var exception = await Assert.ThrowsAsync<OperationCanceledException>(
+            () => searchProducts.ExecuteAsync(
+                request,
+                cts.Token));
+
+        // Assert
+        Assert.Equal(cts.Token, exception.CancellationToken);
+        Assert.Equal(0, repository.SearchCallCount);
+    }
 }
