@@ -61,6 +61,8 @@ public static class ElasticsearchServiceCollectionExtensions
 
         services.AddHostedService<ElasticsearchStartupService>();
 
+        services.AddSingleton<IProductIndexWriter, ElasticsearchProductIndexWriter>();
+
         return services;
     }
 }

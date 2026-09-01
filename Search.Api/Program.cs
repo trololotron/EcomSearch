@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddElasticsearch(builder.Configuration);
 builder.Services.AddRedis(builder.Configuration);
+builder.Services.AddKafka(builder.Configuration);
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddScoped<SearchProducts>();

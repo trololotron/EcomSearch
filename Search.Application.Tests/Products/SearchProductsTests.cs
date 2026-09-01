@@ -206,7 +206,8 @@ public sealed class SearchProductsTests
         Assert.Equal(1, repository.SearchCallCount);
     }
 
-    [Fact]    public async Task ExecuteAsync_WhenCacheSetFails_ReturnsRepositoryResult()
+    [Fact]    
+    public async Task ExecuteAsync_WhenCacheSetFails_ReturnsRepositoryResult()
     {
         // Arrange
         var repository = new FakeProductSearchRepository();
