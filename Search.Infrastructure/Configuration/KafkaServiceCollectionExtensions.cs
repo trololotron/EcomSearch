@@ -39,8 +39,27 @@ public static class KafkaServiceCollectionExtensions
                 .Build();
         });
 
+        services.AddSingleton<IConsumer<string, string>>(sp =>
+        {
+            var options = sp
+                .GetRequiredService<IOptions<KafkaOptions>>()
+                .Value;
+
+            var consumerConfig = new ConsumerConfig
+            {
+                BootstrapServers = options.BootstrapServers,
+                GroupId = "ecomsearch-search-indexer",
+                AutoOffsetReset = AutoOffsetReset.Earliest,
+                EnableAutoCommit = false
+            };
+
+            return new ConsumerBuilder<string, string>(
+                consumerConfig)
+                .Build();
+        });
+
         services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
-        services.AddSingleton<IProductUpdatedHandler, ProductUpdatedHandler>();
+        services.AddHostedService<KafkaProductUpdatedConsumer>();
 
         return services;
     }

@@ -1,4 +1,5 @@
 ﻿namespace Search.Application.Abstractions;
+
 public interface IEventPublisher
 {
     Task PublishAsync<T>(

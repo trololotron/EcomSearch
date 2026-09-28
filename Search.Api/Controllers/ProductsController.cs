@@ -9,10 +9,14 @@ namespace Search.Api.Controllers;
 public sealed class ProductsController : ControllerBase
 {
     private readonly SearchProducts _searchProducts;
+    private readonly UpdateProduct _updateProduct;
 
-    public ProductsController(SearchProducts searchProducts)
+    public ProductsController(
+        SearchProducts searchProducts,
+        UpdateProduct updateProduct)
     {
         _searchProducts = searchProducts;
+        _updateProduct = updateProduct;
     }
 
     [HttpGet]
@@ -25,5 +29,17 @@ public sealed class ProductsController : ControllerBase
             cancellationToken);
 
         return Ok(products);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Update(
+    [FromBody] Product product,
+    CancellationToken cancellationToken)
+    {
+        await _updateProduct.ExecuteAsync(
+            product,
+            cancellationToken);
+
+        return Ok();
     }
 }

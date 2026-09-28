@@ -7,25 +7,51 @@ public sealed class SearchProducts
 {
     private readonly IProductSearchRepository _repository;
     private readonly ICache<ProductSearchResult> _cache;
-
+    private readonly IProductSearchCacheVersion _cacheVersion;
     private readonly ILogger<SearchProducts> _logger;
 
     public SearchProducts(
         IProductSearchRepository repository,
         ICache<ProductSearchResult> cache,
-        ILogger<SearchProducts> logger)
+        ILogger<SearchProducts> logger,
+        IProductSearchCacheVersion cacheVersion)
     {
         _repository = repository;
         _cache = cache;
         _logger = logger;
+        _cacheVersion = cacheVersion;
     }
 
     public async Task<ProductSearchResult> ExecuteAsync(
         ProductSearchRequest request,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = ProductSearchCacheKey.Create(request);
+        long version;
 
+        try
+        {
+            version = await _cacheVersion.GetAsync(
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Cache version GET failed. Continuing without cache.");
+
+            return await _repository.SearchAsync(
+                request,
+                cancellationToken);
+        }
+
+        var cacheKey = ProductSearchCacheKey.Create(
+            request,
+            version);
         ProductSearchResult? cachedResult = null;
 
         try

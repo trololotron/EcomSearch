@@ -6,6 +6,25 @@ namespace Search.Application.Tests.Products;
 public sealed class ProductSearchCacheKeyTests
 {
     [Fact]
+    public void Create_DifferentVersion_ReturnsDifferentKey()
+    {
+        // Arrange
+        var request = new ProductSearchRequest
+        {
+            Query = "iphone",
+            Page = 1,
+            PageSize = 20
+        };
+
+        // Act
+        var key1 = ProductSearchCacheKey.Create(request, 1);
+        var key2 = ProductSearchCacheKey.Create(request, 2);
+
+        // Assert
+        Assert.NotEqual(key1, key2);
+    }
+
+    [Fact]
     public void Create_SameRequest_ReturnsSameKey()
     {
         // Arrange
@@ -24,8 +43,8 @@ public sealed class ProductSearchCacheKeyTests
         };
 
         // Act
-        var key1 = ProductSearchCacheKey.Create(request1);
-        var key2 = ProductSearchCacheKey.Create(request2);
+        var key1 = ProductSearchCacheKey.Create(request1, 1);
+        var key2 = ProductSearchCacheKey.Create(request2, 1);
 
         // Assert
         Assert.Equal(key1, key2);
@@ -50,8 +69,8 @@ public sealed class ProductSearchCacheKeyTests
         };
 
         // Act
-        var key1 = ProductSearchCacheKey.Create(request1);
-        var key2 = ProductSearchCacheKey.Create(request2);
+        var key1 = ProductSearchCacheKey.Create(request1, 1);
+        var key2 = ProductSearchCacheKey.Create(request2, 1);
 
         // Assert
         Assert.NotEqual(key1, key2);
@@ -76,8 +95,8 @@ public sealed class ProductSearchCacheKeyTests
         };
 
         // Act
-        var key1 = ProductSearchCacheKey.Create(request1);
-        var key2 = ProductSearchCacheKey.Create(request2);
+        var key1 = ProductSearchCacheKey.Create(request1, 1);
+        var key2 = ProductSearchCacheKey.Create(request2, 1);
 
         // Assert
         Assert.NotEqual(key1, key2);

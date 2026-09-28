@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Search.Application.Abstractions;
 using Search.Infrastructure.Cache;
+using Search.Infrastructure.Redis;
 using StackExchange.Redis;
 
 namespace Search.Infrastructure.Configuration;
@@ -31,6 +32,8 @@ public static class RedisServiceCollectionExtensions
             return ConnectionMultiplexer.Connect(
                 options.ConnectionString);
         });
+
+        services.AddSingleton<IProductSearchCacheVersion, RedisProductSearchCacheVersion>();
 
         services.AddSingleton(
             typeof(ICache<>),

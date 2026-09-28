@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Search.Application.Abstractions;
 using Search.Application.Products;
 using Search.Application.Tests.Fakes;
 using Search.Domain;
@@ -7,6 +8,23 @@ namespace Search.Application.Tests.Products;
 
 public sealed class SearchProductsTests
 {
+    private static SearchProducts CreateSearchProducts(
+        IProductSearchRepository repository,
+        ICache<ProductSearchResult> cache,
+        IProductSearchCacheVersion? cacheVersion = null)
+    {
+        cacheVersion ??= new FakeProductSearchCacheVersion
+        {
+            Version = 1
+        };
+
+        return new SearchProducts(
+            repository,
+            cache,
+            NullLogger<SearchProducts>.Instance,
+            cacheVersion);
+    }
+
     [Fact]
     public async Task ExecuteAsync_ReturnsProductsFromRepository()
     {
@@ -14,10 +32,9 @@ public sealed class SearchProductsTests
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
 
-        var searchProducts = new SearchProducts(
-            repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+        var searchProducts = CreateSearchProducts(
+         repository,
+         cache);
 
         // Act
         var result = await searchProducts.ExecuteAsync(
@@ -39,10 +56,9 @@ public sealed class SearchProductsTests
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         // Act
         await searchProducts.ExecuteAsync(
@@ -61,10 +77,9 @@ public sealed class SearchProductsTests
         // Arrange
         var repository = new FakeProductSearchRepository();
         var cache = new FakeCache<ProductSearchResult>();
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         using var cts = new CancellationTokenSource();
 
@@ -112,16 +127,15 @@ public sealed class SearchProductsTests
             PageSize = 20
         };
 
-        var cacheKey = ProductSearchCacheKey.Create(request);
+        var cacheKey = ProductSearchCacheKey.Create(request, 1);
 
         await cache.SetAsync(
             cacheKey,
             cachedResult);
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         // Act
         var result = await searchProducts.ExecuteAsync(request);
@@ -147,10 +161,9 @@ public sealed class SearchProductsTests
             Query = "iphone"
         };
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         // Act
         var result = await searchProducts.ExecuteAsync(request);
@@ -164,7 +177,7 @@ public sealed class SearchProductsTests
         Assert.Equal(1, cache.GetCallCount);
         Assert.Equal(1, cache.SetCallCount);
 
-        var cacheKey = ProductSearchCacheKey.Create(request);
+        var cacheKey = ProductSearchCacheKey.Create(request, 1);
 
         var cachedValue = await cache.GetAsync(cacheKey);
 
@@ -187,10 +200,9 @@ public sealed class SearchProductsTests
             new InvalidOperationException("Redis is unavailable."),
             failOnGet: true);
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         var request = new ProductSearchRequest
         {
@@ -206,7 +218,7 @@ public sealed class SearchProductsTests
         Assert.Equal(1, repository.SearchCallCount);
     }
 
-    [Fact]    
+    [Fact]
     public async Task ExecuteAsync_WhenCacheSetFails_ReturnsRepositoryResult()
     {
         // Arrange
@@ -216,10 +228,9 @@ public sealed class SearchProductsTests
             new InvalidOperationException("Redis is unavailable."),
             failOnSet: true);
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         var request = new ProductSearchRequest
         {
@@ -248,10 +259,9 @@ public sealed class SearchProductsTests
             new OperationCanceledException(cts.Token),
             failOnGet: true);
 
-        var searchProducts = new SearchProducts(
+        var searchProducts = CreateSearchProducts(
             repository,
-            cache,
-            NullLogger<SearchProducts>.Instance);
+            cache);
 
         var request = new ProductSearchRequest
         {
@@ -267,5 +277,40 @@ public sealed class SearchProductsTests
         // Assert
         Assert.Equal(cts.Token, exception.CancellationToken);
         Assert.Equal(0, repository.SearchCallCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCacheVersionGetFails_BypassesCacheAndSearchesRepository()
+    {
+        // Arrange
+        var repository = new FakeProductSearchRepository();
+        var cache = new FakeCache<ProductSearchResult>();
+
+        var cacheVersion = new FakeProductSearchCacheVersion
+        {
+            FailOnGet = true
+        };
+
+        var searchProducts = CreateSearchProducts(
+            repository,
+            cache,
+            cacheVersion);
+
+        var request = new ProductSearchRequest
+        {
+            Query = "iphone"
+        };
+
+        // Act
+        var result = await searchProducts.ExecuteAsync(request);
+
+        // Assert
+        Assert.Single(result.Items);
+        Assert.Equal("iPhone 17 Pro", result.Items[0].Name);
+
+        Assert.Equal(1, repository.SearchCallCount);
+
+        Assert.Equal(0, cache.GetCallCount);
+        Assert.Equal(0, cache.SetCallCount);
     }
 }

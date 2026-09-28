@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Search.Application.Abstractions;
 using Search.Domain;
 
@@ -7,14 +8,20 @@ public sealed class ProductUpdatedHandler
     : IProductUpdatedHandler
 {
     private readonly IProductIndexWriter _indexWriter;
+    private readonly IProductSearchCacheVersion _cacheVersion;
+    private readonly ILogger<ProductUpdatedHandler> _logger;
 
     public ProductUpdatedHandler(
-        IProductIndexWriter indexWriter)
+        IProductIndexWriter indexWriter,
+        IProductSearchCacheVersion cacheVersion,
+        ILogger<ProductUpdatedHandler> logger)
     {
         _indexWriter = indexWriter;
+        _cacheVersion = cacheVersion;
+        _logger = logger;
     }
 
-    public Task HandleAsync(
+    public async Task HandleAsync(
         ProductUpdated message,
         CancellationToken cancellationToken = default)
     {
@@ -27,8 +34,26 @@ public sealed class ProductUpdatedHandler
             Category = message.Category
         };
 
-        return _indexWriter.UpsertAsync(
+        await _indexWriter.UpsertAsync(
             product,
             cancellationToken);
+
+        try
+        {
+            await _cacheVersion.IncrementAsync(
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to invalidate search cache after updating product {ProductId}. Cached data may remain stale until expiration.",
+                product.Id);
+        }
     }
 }

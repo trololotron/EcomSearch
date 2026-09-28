@@ -1,3 +1,4 @@
+using Search.Application.Events;
 using Search.Application.Products;
 using Search.Infrastructure.Configuration;
 
@@ -6,9 +7,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddElasticsearch(builder.Configuration);
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddKafka(builder.Configuration);
+builder.Services.AddMongo(builder.Configuration);
+
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+
 builder.Services.AddScoped<SearchProducts>();
+builder.Services.AddScoped<UpdateProduct>();
+
+builder.Services.AddScoped<IProductUpdatedHandler, ProductUpdatedHandler>();
 
 var app = builder.Build();
 
