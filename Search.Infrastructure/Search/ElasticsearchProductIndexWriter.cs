@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Search.Application.Abstractions;
 using Search.Domain;
 using Search.Infrastructure.Configuration;
+using Search.Infrastructure.Diagnostics;
 
 namespace Search.Infrastructure.Search;
 
@@ -28,6 +29,11 @@ public sealed class ElasticsearchProductIndexWriter
         Product product,
         CancellationToken cancellationToken = default)
     {
+        using var activity =
+             InfrastructureTelemetry.ActivitySource.StartActivity("Elasticsearch.Upsert");
+
+        activity?.SetTag("product.id", product.Id);
+
         var response = await _client.IndexAsync(
             product,
             index => index

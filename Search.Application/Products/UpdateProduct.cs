@@ -1,4 +1,5 @@
 ﻿using Search.Application.Abstractions;
+using Search.Application.Diagnostics;
 using Search.Application.Events;
 using Search.Domain;
 
@@ -16,6 +17,11 @@ public sealed class UpdateProduct
         Product product,
         CancellationToken cancellationToken = default)
     {
+        using var activity =
+            ApplicationTelemetry.ActivitySource.StartActivity(
+                "UpdateProduct");
+        activity?.SetTag("product.id", product.Id);
+
         var message = new ProductUpdated(
             product.Id,
             product.Name,

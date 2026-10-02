@@ -1,5 +1,6 @@
-using Search.Application.Abstractions;
 using Microsoft.Extensions.Logging;
+using Search.Application.Abstractions;
+using Search.Application.Diagnostics;
 
 namespace Search.Application.Products;
 
@@ -74,12 +75,16 @@ public sealed class SearchProducts
 
         if (cachedResult is not null)
         {
+            ApplicationMetrics.CacheHits.Add(1);
+
             _logger.LogInformation(
                 "Cache HIT for key {CacheKey}",
                 cacheKey);
 
             return cachedResult;
         }
+
+        ApplicationMetrics.CacheMisses.Add(1);
 
         _logger.LogInformation("Cache MISS for key {CacheKey}", cacheKey);
 

@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Search.Application.Events;
+using Search.Infrastructure.Diagnostics;
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace Search.Infrastructure.Messaging;
@@ -38,6 +41,28 @@ public sealed class KafkaProductUpdatedConsumer
                 var result = _consumer.Consume(
                     stoppingToken);
 
+                using var activity = StartConsumerActivity(result);
+
+                activity?.SetTag(
+                    "messaging.system",
+                    "kafka");
+
+                activity?.SetTag(
+                    "messaging.destination.name",
+                    result.Topic);
+
+                activity?.SetTag(
+                    "messaging.kafka.partition",
+                    result.Partition.Value);
+
+                activity?.SetTag(
+                    "messaging.kafka.offset",
+                    result.Offset.Value);
+
+                activity?.SetTag(
+                    "messaging.kafka.message.key",
+                    result.Message.Key);
+
                 var message =
                     JsonSerializer.Deserialize<ProductUpdated>(
                         result.Message.Value);
@@ -62,6 +87,8 @@ public sealed class KafkaProductUpdatedConsumer
                         stoppingToken);
 
                     _consumer.Commit(result);
+
+                    InfrastructureMetrics.KafkaConsumed.Add(1);
                 }
                 catch (OperationCanceledException)
                     when (stoppingToken.IsCancellationRequested)
@@ -85,5 +112,52 @@ public sealed class KafkaProductUpdatedConsumer
         {
             _consumer.Close();
         }
+    }
+
+    private static Activity? StartConsumerActivity(
+    ConsumeResult<string, string> result)
+    {
+        var headers = result.Message.Headers;
+
+        if (headers is not null &&
+            headers.TryGetLastBytes(
+                "traceparent",
+                out var traceParentBytes))
+        {
+            var traceParent =
+                Encoding.UTF8.GetString(
+                    traceParentBytes);
+
+            string? traceState = null;
+
+            if (headers.TryGetLastBytes(
+                    "tracestate",
+                    out var traceStateBytes))
+            {
+                traceState =
+                    Encoding.UTF8.GetString(
+                        traceStateBytes);
+            }
+
+            if (ActivityContext.TryParse(
+                    traceParent,
+                    traceState,
+                    isRemote: true,
+                    out var parentContext))
+            {
+                return InfrastructureTelemetry
+                    .ActivitySource
+                    .StartActivity(
+                        "Kafka.Consume",
+                        ActivityKind.Consumer,
+                        parentContext);
+            }
+        }
+
+        return InfrastructureTelemetry
+            .ActivitySource
+            .StartActivity(
+                "Kafka.Consume",
+                ActivityKind.Consumer);
     }
 }

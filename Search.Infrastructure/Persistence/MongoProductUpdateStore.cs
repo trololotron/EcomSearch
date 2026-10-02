@@ -1,10 +1,12 @@
-﻿using System.Text.Json;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Search.Application.Abstractions;
 using Search.Application.Events;
 using Search.Domain;
 using Search.Infrastructure.Configuration;
+using Search.Infrastructure.Diagnostics;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace Search.Infrastructure.Persistence;
 
@@ -36,15 +38,25 @@ public sealed class MongoProductUpdateStore
         ProductUpdated productUpdated,
         CancellationToken cancellationToken = default)
     {
+        using var activity =
+            InfrastructureTelemetry.ActivitySource.StartActivity(
+                "MongoProductUpdateStore.Save");
+
+        activity?.SetTag("product.id", product.Id);
+
         using var session = await _client.StartSessionAsync(
             cancellationToken: cancellationToken);
+
+        var currentActivity = Activity.Current;
 
         var outboxMessage = new OutboxMessage
         {
             Id = Guid.NewGuid(),
             Type = nameof(ProductUpdated),
             Payload = JsonSerializer.Serialize(productUpdated),
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            TraceParent = currentActivity?.Id,
+            TraceState = currentActivity?.TraceStateString
         };
 
         await session.WithTransactionAsync(

@@ -1,10 +1,12 @@
-﻿using System.Text.Json;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Search.Application.Abstractions;
 using Search.Application.Events;
 using Search.Infrastructure.Configuration;
+using Search.Infrastructure.Diagnostics;
 using Search.Infrastructure.Persistence;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace Search.Infrastructure.Outbox;
 
@@ -42,6 +44,16 @@ public sealed class OutboxProcessor
             return false;
         }
 
+        using var activity = StartOutboxActivity(message);
+
+        activity?.SetTag(
+            "outbox.message.id",
+            message.Id);
+
+        activity?.SetTag(
+            "outbox.message.type",
+            message.Type);
+
         if (message.Type != nameof(ProductUpdated))
         {
             throw new InvalidOperationException(
@@ -76,6 +88,38 @@ public sealed class OutboxProcessor
             update,
             cancellationToken: cancellationToken);
 
+        InfrastructureMetrics.OutboxProcessed.Add(1);
+
         return true;
     }
+
+    private static Activity? StartOutboxActivity(
+    OutboxMessage message)
+    {
+        if (!string.IsNullOrWhiteSpace(message.TraceParent) &&
+            ActivityContext.TryParse(
+                message.TraceParent,
+                message.TraceState,
+                isRemote: true,
+                out var parentContext))
+        {
+            return InfrastructureTelemetry.ActivitySource.StartActivity(
+                "Outbox.Process",
+                ActivityKind.Internal,
+                parentContext);
+        }
+
+        return InfrastructureTelemetry.ActivitySource.StartActivity(
+            "Outbox.Process",
+            ActivityKind.Internal);
+    }
+
+    public Task<long> GetPendingCountAsync(
+    CancellationToken cancellationToken = default)
+    {
+        return _outbox.CountDocumentsAsync(
+            x => x.ProcessedAt == null,
+            cancellationToken: cancellationToken);
+    }
+
 }

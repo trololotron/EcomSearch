@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Search.Application.Abstractions;
+using Search.Application.Diagnostics;
 using Search.Domain;
 
 namespace Search.Application.Events;
@@ -25,6 +26,13 @@ public sealed class ProductUpdatedHandler
         ProductUpdated message,
         CancellationToken cancellationToken = default)
     {
+        using var activity =
+            ApplicationTelemetry.ActivitySource.StartActivity(
+                "ProductUpdatedHandler.Handle");
+
+        activity?.SetTag("product.id", message.ProductId);
+
+
         var product = new Product
         {
             Id = message.ProductId,

@@ -39,4 +39,13 @@ public sealed class MongoProductRepository
             },
             cancellationToken);
     }
+
+    public async Task<Product?> GetByIdAsync(
+    Guid id,
+    CancellationToken cancellationToken = default)
+    {
+        return await _products
+            .Find(product => product.Id == id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

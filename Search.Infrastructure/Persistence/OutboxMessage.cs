@@ -11,4 +11,7 @@ public sealed class OutboxMessage
     public DateTimeOffset CreatedAt { get; init; }
 
     public DateTimeOffset? ProcessedAt { get; set; }
+
+    public string? TraceParent { get; init; }
+    public string? TraceState { get; init; }
 }

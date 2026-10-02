@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Extensions.DiagnosticSources;
 using Search.Application.Abstractions;
 using Search.Infrastructure.Outbox;
 using Search.Infrastructure.Persistence;
@@ -10,9 +11,9 @@ namespace Search.Infrastructure.Configuration;
 
 public static class MongoServiceCollectionExtensions
 {
-    public static IServiceCollection AddMongo(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddMongoPersistence(
+    this IServiceCollection services,
+    IConfiguration configuration)
     {
         MongoSerializationConfiguration.Configure();
 
@@ -40,15 +41,21 @@ public static class MongoServiceCollectionExtensions
         services.AddSingleton<IMongoClient>(sp =>
         {
             var options = sp
-                .GetRequiredService<IOptions<MongoOptions>>()
-                .Value;
+                    .GetRequiredService<IOptions<MongoOptions>>()
+                    .Value;
 
-            return new MongoClient(
-                options.ConnectionString);
+            var mongoUrl =
+                MongoUrl.Create(options.ConnectionString);
+
+            var settings =
+                MongoClientSettings.FromUrl(mongoUrl);
+
+            settings.ClusterConfigurator = cb =>
+                cb.Subscribe(
+                    new DiagnosticsActivityEventSubscriber());
+
+            return new MongoClient(settings);
         });
-
-        services.AddSingleton<OutboxProcessor>();
-        services.AddHostedService<OutboxPublisher>();
 
         services.AddScoped<
             IProductUpdateStore,
@@ -57,6 +64,26 @@ public static class MongoServiceCollectionExtensions
         services.AddScoped<
             IProductRepository,
             MongoProductRepository>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddOutboxProcessing(
+    this IServiceCollection services)
+    {
+        services.AddSingleton<OutboxProcessor>();
+        services.AddHostedService<OutboxPublisher>();
+        services.AddHostedService<OutboxMetricsCollector>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddMongo(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddMongoPersistence(configuration);
+        services.AddOutboxProcessing();
 
         return services;
     }

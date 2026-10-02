@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="ProductCatalog.Contracts/ProductCatalog.Contracts.csproj" />
+  <Project Path="ProductCatalog.Grpc.Tests/ProductCatalog.Grpc.Tests.csproj" />
+  <Project Path="ProductCatalog.Grpc/ProductCatalog.Grpc.csproj" />
   <Project Path="Search.Api/Search.Api.csproj" />
   <Project Path="Search.Application.Tests/Search.Application.Tests.csproj" />
   <Project Path="Search.Application/Search.Application.csproj" />

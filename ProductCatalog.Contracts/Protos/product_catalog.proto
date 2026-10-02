@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option csharp_namespace = "ProductCatalog.Contracts";
+
+package productcatalog;
+
+service ProductCatalog {
+  rpc GetProduct (GetProductRequest)
+      returns (GetProductReply);
+}
+
+message GetProductRequest {
+  string id = 1;
+}
+
+message GetProductReply {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string price = 4;
+  string category = 5;
+}

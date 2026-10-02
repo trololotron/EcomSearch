@@ -12,6 +12,11 @@ public sealed class FakeProductRepository
 
     public bool ShouldFail { get; set; }
 
+    public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task UpsertAsync(
         Product product,
         CancellationToken cancellationToken = default)

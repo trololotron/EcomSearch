@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Search.Application.Abstractions;
 using Search.Application.Tests.Fakes;
 using Search.Infrastructure.Messaging;
+using Search.Infrastructure.Outbox;
 
 namespace Search.Application.Tests;
 
@@ -24,6 +25,16 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             if (outboxPublisher is not null)
             {
                 services.Remove(outboxPublisher);
+            }
+
+            var outboxMetricsCollector = services.FirstOrDefault(
+                        descriptor =>
+                        descriptor.ServiceType == typeof(IHostedService) &&
+                        descriptor.ImplementationType == typeof(OutboxMetricsCollector));
+
+            if (outboxMetricsCollector is not null)
+            {
+                services.Remove(outboxMetricsCollector);
             }
 
             services.RemoveAll<IProductSearchRepository>();

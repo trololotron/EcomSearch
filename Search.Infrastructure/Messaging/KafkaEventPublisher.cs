@@ -1,7 +1,10 @@
-using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using Search.Application.Abstractions;
+using Search.Infrastructure.Diagnostics;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
 
 namespace Search.Infrastructure.Messaging;
 
@@ -24,6 +27,35 @@ public sealed class KafkaEventPublisher : IEventPublisher
         string key,
         CancellationToken cancellationToken = default)
     {
+        using var activity =
+        InfrastructureTelemetry.ActivitySource.StartActivity(
+            "Kafka.Publish",
+            ActivityKind.Producer);
+
+        activity?.SetTag("messaging.system", "kafka");
+        activity?.SetTag("messaging.destination.name", topic);
+        activity?.SetTag("messaging.kafka.message.key", key);
+
+        var headers = new Headers();
+
+        var currentActivity = Activity.Current;
+
+        if (currentActivity?.Id is not null)
+        {
+            headers.Add(
+                "traceparent",
+                Encoding.UTF8.GetBytes(currentActivity.Id));
+
+            if (!string.IsNullOrWhiteSpace(
+                    currentActivity.TraceStateString))
+            {
+                headers.Add(
+                    "tracestate",
+                    Encoding.UTF8.GetBytes(
+                        currentActivity.TraceStateString));
+            }
+        }
+
         var value = JsonSerializer.Serialize(message);
 
         var result = await _producer.ProduceAsync(
@@ -31,7 +63,8 @@ public sealed class KafkaEventPublisher : IEventPublisher
             new Message<string, string>
             {
                 Key = key,
-                Value = value
+                Value = JsonSerializer.Serialize(message),
+                Headers = headers
             },
             cancellationToken);
 
